@@ -63,6 +63,7 @@ export type UserFaction = {
   user_id: number;
   faction_id: number;
   name: string;
+  notes: string;
   faction_name?: string;
 }
 

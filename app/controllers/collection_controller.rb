@@ -50,7 +50,7 @@ class CollectionController < ApplicationController
 
   def update_user_faction
     redirect_home_unless_logged_in!
-    
+
     user_faction_id = params[:user_faction_id]
     user_faction = ::UserFaction.find_by(
       user_id: current_user_id,
@@ -59,6 +59,7 @@ class CollectionController < ApplicationController
     return render status: 400, json: { status: 400, error: 'Faction not found in your collection' } unless user_faction
 
     user_faction.name = params[:name] if params.key?(:name)
+    user_faction.notes = params[:notes] if params.key?(:notes)
     user_faction.save!
 
     render status: 200, json: { status: 200, user_faction: user_faction }

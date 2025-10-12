@@ -5,6 +5,7 @@ import { byPrefixAndName } from '@awesome.me/kit-902717d512/icons';
 import UserFactionModels from "./UserFactionModels";
 import UserFactionGroups from "./UserFactionGroups";
 import UserFactionGallery from "./UserFactionGallery";
+import UserFactionNotes from "./UserFactionNotes";
 import EditUserFaction from "./EditUserFaction";
 import TabsBar from "../common/TabsBar";
 
@@ -84,10 +85,11 @@ const CollectionFaction = (props: Props) => {
         tabs={[
           { value: 'models', label: 'Models', icon: 'chess-knight' },
           { value: 'groups', label: 'Groups', icon: 'layer-group' },
+          { value: 'notes', label: 'Notes', icon: 'book' },
           { value: 'gallery', label: 'Gallery', icon: 'camera', iconBadgeNumber: userFactionImageAssociations.length },
           { value: 'edit', label: 'Edit', icon: 'gear' }
         ].filter((tab) => (
-          props.is_current_user || ['models', 'gallery'].includes(tab.value)
+          props.is_current_user || ['models', 'notes', 'gallery'].includes(tab.value)
         ))}
         initialTab={mode}
         onTabClicked={(tabValue: string) => setMode(tabValue)} />
@@ -110,6 +112,12 @@ const CollectionFaction = (props: Props) => {
             userFaction={props.user_faction}
             userModelGroups={props.user_model_groups}
             afterSave={handleGroupsSaved}
+          />
+        }
+        {mode === 'notes' &&
+          <UserFactionNotes
+            isCurrentUser={props.is_current_user}
+            userFaction={props.user_faction}
           />
         }
         {mode === 'gallery' &&
