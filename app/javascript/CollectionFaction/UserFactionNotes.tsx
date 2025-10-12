@@ -4,7 +4,8 @@ import Button from "../common/Button";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { byPrefixAndName } from '@awesome.me/kit-902717d512/icons';
 import { apiCall } from "../utils/helpers";
-import TextArea from "../common/TextArea";
+import RichTextEditor from "../common/RichTextEditor";
+import RichTextDisplay from "../common/RichTextDisplay";
 
 type Props = {
   isCurrentUser: boolean;
@@ -40,12 +41,12 @@ const UserFactionNotes = (props: Props) => {
 
   return (
     <div id={componentId}>
-      <div className='text-center mt-5'>
+      <div className='mt-5'>
         {props.isCurrentUser &&
           <>
-            <TextArea
+            <RichTextEditor
               value={proposedNotes}
-              onChange={e => setProposedNotes(e.target.value)}
+              onChange={setProposedNotes}
               className='mb-5' />
 
             <div className='flex items-center'>
@@ -59,9 +60,7 @@ const UserFactionNotes = (props: Props) => {
           </>
         }
         {!props.isCurrentUser &&
-          <div className='text-center'>
-            {proposedNotes || 'No notes'}
-          </div>
+          <RichTextDisplay content={proposedNotes} />
         }
       </div>
     </div>

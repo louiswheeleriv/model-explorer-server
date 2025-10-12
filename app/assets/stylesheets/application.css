@@ -11,3 +11,18 @@
 .remove-arrow {
   -moz-appearance: textfield;
 }
+
+/* Fix for list display in prose content */
+.prose ul {
+  list-style: disc;
+  padding-left: 2em;
+}
+
+.prose ol {
+  list-style: decimal;
+  padding-left: 2em;
+}
+
+.prose li {
+  display: list-item;
+}
