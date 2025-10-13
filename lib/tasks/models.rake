@@ -214,4 +214,134 @@ namespace :models do
     puts "New models created: #{new_models}"
     puts "Sync complete!"
   end
+
+  desc "Remove a specific Model and reparent associated UserModels"
+  task :remove_model => :environment do
+    model_name = ENV['model_name']
+    reparent_to_model_name = ENV['reparent_to_model_name']
+
+    unless model_name
+      puts "Error: model_name parameter is required"
+      puts "Usage: rake models:remove_model model_name=\"Tactical Squad\" reparent_to_model_name=\"Intercessors\""
+      exit 1
+    end
+
+    # Find the model to remove
+    models = Model.where(name: model_name)
+
+    if models.count == 0
+      puts "Error: Model with name='#{model_name}' not found"
+      exit 1
+    elsif models.count > 1
+      puts "Multiple models found with name='#{model_name}':"
+      models.each do |m|
+        puts "  #{m.id}. #{m.name} (Faction: #{m.faction.name})"
+      end
+      puts
+      print "Enter the ID of the model to remove: "
+      STDOUT.flush
+      selected_id = STDIN.gets.strip.to_i
+
+      model = models.find { |m| m.id == selected_id }
+      unless model
+        puts "Error: Invalid selection"
+        exit 1
+      end
+    else
+      model = models.first
+    end
+
+    faction = model.faction
+    user_model_count = UserModel.where(model_id: model.id).count
+
+    puts
+    puts "Model to remove:"
+    puts "  ID: #{model.id}"
+    puts "  Name: #{model.name}"
+    puts "  Faction: #{faction.name}"
+    puts "  UserModels using this: #{user_model_count}"
+    puts
+
+    # If there are UserModels, validate reparent_to_model_name
+    if user_model_count > 0
+      unless reparent_to_model_name
+        puts "Error: reparent_to_model_name is required because this model has #{user_model_count} associated UserModel(s)"
+        puts "Usage: rake models:remove_model model_name=\"#{model_name}\" reparent_to_model_name=\"<target_model_name>\""
+        exit 1
+      end
+
+      # Find target model in the same faction
+      target_models = Model.where(faction_id: faction.id, name: reparent_to_model_name)
+
+      if target_models.count == 0
+        puts "Error: Target model with name='#{reparent_to_model_name}' not found in faction '#{faction.name}'"
+        puts
+        puts "Available models in #{faction.name}:"
+        Model.where(faction_id: faction.id).where.not(id: model.id).order(:name).each do |m|
+          puts "  - #{m.name}"
+        end
+        exit 1
+      elsif target_models.count > 1
+        puts "Multiple models found with name='#{reparent_to_model_name}' in faction '#{faction.name}':"
+        target_models.each do |m|
+          puts "  #{m.id}. #{m.name}"
+        end
+        puts
+        print "Enter the ID of the model to reparent to: "
+        STDOUT.flush
+        selected_id = STDIN.gets.strip.to_i
+
+        target_model = target_models.find { |m| m.id == selected_id }
+        unless target_model
+          puts "Error: Invalid selection"
+          exit 1
+        end
+      else
+        target_model = target_models.first
+      end
+
+      puts "Reparent UserModels to:"
+      puts "  ID: #{target_model.id}"
+      puts "  Name: #{target_model.name}"
+      puts "  Faction: #{target_model.faction.name}"
+      puts
+      puts "This will:"
+      puts "  - Reparent #{user_model_count} UserModel(s) from '#{model.name}' to '#{target_model.name}'"
+      puts "  - Delete Model '#{model.name}' (ID: #{model.id})"
+      puts
+      print "Proceed? (yes/no): "
+      STDOUT.flush
+      response = STDIN.gets.strip.downcase
+
+      unless response == 'yes'
+        puts "Cancelled."
+        exit 0
+      end
+
+      # Reparent UserModels
+      puts "Reparenting #{user_model_count} UserModel(s)..."
+      UserModel.where(model_id: model.id).update_all(model_id: target_model.id)
+      puts "✓ Reparented successfully"
+    else
+      puts "This will:"
+      puts "  - Delete Model '#{model.name}' (ID: #{model.id})"
+      puts "  - No UserModels to reparent"
+      puts
+      print "Proceed? (yes/no): "
+      STDOUT.flush
+      response = STDIN.gets.strip.downcase
+
+      unless response == 'yes'
+        puts "Cancelled."
+        exit 0
+      end
+    end
+
+    # Delete the model
+    model.destroy!
+    puts "✓ Model '#{model.name}' (ID: #{model.id}) deleted"
+    puts
+    puts "Complete!"
+  end
+
 end
