@@ -2,11 +2,12 @@ require 'nokogiri'
 require 'csv'
 
 class BattleScribeCatalogueParser
-  attr_reader :file_path, :csv_path
+  attr_reader :file_path, :csv_path, :include_legends
 
-  def initialize(file_path, csv_path = nil)
+  def initialize(file_path:, csv_path: nil, include_legends: false)
     @file_path = file_path
     @csv_path = csv_path || Rails.root.join('resources', 'models_seed.csv')
+    @include_legends = include_legends
   end
 
   def process
@@ -60,6 +61,9 @@ class BattleScribeCatalogueParser
     units = []
     unit_entries.each do |entry|
       unit_name = entry['name']
+      next unless unit_name && !unit_name.strip.empty?
+
+      next if unit_name.strip.downcase.include?('[legends]') && !include_legends
       units << unit_name
     end
 
@@ -114,23 +118,23 @@ class BattleScribeCatalogueParser
   end
 end
 
-namespace :battlescribe do
+namespace :models do
   desc "Parse units from BattleScribe catalogue file and update CSV"
-  task :parse_units => :environment do
+  task :parse_units_from_file => :environment do
     file_path = ENV['file_path']
 
     unless file_path
       puts "Error: file_path parameter is required"
-      puts "Usage: rake battlescribe:parse_units file_path=\"./path/to/file.cat\""
+      puts "Usage: rake battlescribe:parse_units_from_file file_path=\"./path/to/file.cat\""
       exit 1
     end
 
-    parser = BattleScribeCatalogueParser.new(file_path)
+    parser = BattleScribeCatalogueParser.new(file_path:)
     parser.process
   end
 
   desc "Parse all BattleScribe catalogue files in ./resources/battlescribe"
-  task :parse_all => :environment do
+  task :parse_units_from_dir => :environment do
     battlescribe_dir = Rails.root.join('resources', 'battlescribe')
 
     unless Dir.exist?(battlescribe_dir)
@@ -153,7 +157,7 @@ namespace :battlescribe do
       puts "\n[#{index + 1}/#{cat_files.count}] Processing: #{File.basename(file_path)}"
       puts "-" * 80
 
-      parser = BattleScribeCatalogueParser.new(file_path)
+      parser = BattleScribeCatalogueParser.new(file_path:)
       parser.process
     end
 
@@ -166,5 +170,48 @@ namespace :battlescribe do
       total_rows = CSV.read(csv_path).count - 1 # Subtract header row
       puts "Final CSV contains #{total_rows} total models"
     end
+  end
+
+  task :sync_models => :environment do
+    models_csv_path = Rails.root.join('resources', 'models_seed.csv')
+    game_system_name = ENV['game_system'] || 'Warhammer 40k'
+
+    unless File.exist?(models_csv_path)
+      puts "Error: Models CSV not found at #{models_csv_path}"
+      exit 1
+    end
+
+    game_system = GameSystem.find_by(name: game_system_name)
+    unless game_system
+      puts "Error: GameSystem '#{game_system_name}' not found in database"
+      exit 1
+    end
+
+    puts "Syncing factions and models from CSV: #{models_csv_path}"
+    puts "=" * 80
+
+    total_models = 0
+    new_factions = 0
+    new_models = 0
+    CSV.foreach(models_csv_path, headers: true) do |row|
+      faction_name = row['Faction Name']
+      model_name = row['Model Name']
+      next unless faction_name && model_name
+
+      total_models += 1
+      faction = Faction.find_or_create_by!(game_system:, name: faction_name.strip) do |new_faction|
+        puts "New faction: #{new_faction.name}"
+        new_factions += 1
+      end
+      Model.find_or_create_by!(faction:, name: model_name.strip) do |new_model|
+        puts "[Faction: #{faction_name}] New model: #{new_model.name}"
+        new_models += 1
+      end
+    end
+    puts "=" * 80
+    puts "Processed #{total_models} models"
+    puts "New factions created: #{new_factions}"
+    puts "New models created: #{new_models}"
+    puts "Sync complete!"
   end
 end
