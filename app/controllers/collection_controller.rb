@@ -60,7 +60,12 @@ class CollectionController < ApplicationController
 
     user_faction.name = params[:name] if params.key?(:name)
     user_faction.notes = params[:notes] if params.key?(:notes)
+
+    Rails.logger.info "About to save UserFaction #{user_faction.id}: notes=#{user_faction.notes.inspect}, changed=#{user_faction.changed?}, changes=#{user_faction.changes.inspect}"
+
     user_faction.save!
+
+    Rails.logger.info "After save UserFaction #{user_faction.id}: notes=#{user_faction.reload.notes.inspect}"
 
     render status: 200, json: { status: 200, user_faction: user_faction }
   end
